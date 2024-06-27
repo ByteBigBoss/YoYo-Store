@@ -1,0 +1,83 @@
+version: "3.8"
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api:8080
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - api
+    develop:
+      # we specify the files to watch for changes
+      watch:
+        # it'll watch for changes in package.json and package-lock.json and rebuild the container if there are any changes
+        - path: ./frontend/package.json
+          action: rebuild
+        - path: ./frontend/package-lock.json
+          action: rebuild
+        # it'll watch for changes in the frontend directory and sync the changes with the container real time
+        - path: ./frontend
+          target: /app
+          action: sync
+
+  admin:
+    build: ./admin
+    ports:
+      - "3001:3000"
+    environment:
+      - API_URL=http://api:8080
+    develop:
+      # we specify the files to watch for changes
+      watch:
+        # it'll watch for changes in package.json and package-lock.json and rebuild the container if there are any changes
+        - path: ./admin/package.json
+          action: rebuild
+        - path: ./admin/package-lock.json
+          action: rebuild
+        # it'll watch for changes in the frontend directory and sync the changes with the container real time
+        - path: ./admin
+          target: /app
+          action: sync
+    volumes:
+      - ./admin:/app
+    depends_on:
+      - api
+
+  api:
+    image: php:apache
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - 8080:80
+      - 443:443 # for future ssl traffic
+    develop:
+      watch:
+        - path: ./backend/*.php
+          action: rebuild
+    volumes:
+      - ./backend/apache2.conf:/etc/apache2/apache2.conf
+      - ./backend:/var/www/html # sync project dir with container web dir
+    depends_on:
+      - db
+  
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Yoyo@24#icx@eon
+      MYSQL_DATABASE: yoyo_db
+      MYSQL_USER: nethmina
+      MYSQL_PASSWORD: nethmina24
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql # Automatically execute this script at startup
+
+volumes:
+  db_data:
+
